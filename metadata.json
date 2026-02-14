@@ -1,0 +1,5 @@
+{
+  "name": "Grafos Tech Odometer Verification",
+  "description": "A fleet management interface for validating vehicle odometer readings using AI image analysis.",
+  "requestFramePermissions": []
+}
