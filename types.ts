@@ -17,6 +17,21 @@ export interface VerificationData {
   status: 'pending' | 'success' | 'divergence';
 }
 
+export interface FiscalNoteResult {
+  id: string;
+  fileName: string;
+  imageUrl: string;
+  status: 'processing' | 'validated' | 'review' | 'rejected';
+  aiData?: {
+    classification: 'CANHOTO' | 'MERCADORIA' | 'OUTRO';
+    nfNumberFound: string | null;
+    isNfMatch: boolean;
+    isSigned: boolean;
+    confidence: number;
+  };
+  errorMessage?: string;
+}
+
 export const MOCK_VEHICLES: Vehicle[] = [
   { id: '1', name: 'VOLVO FH 540', plate: 'ABC-1234', status: 'active' },
   { id: '2', name: 'SCANIA R 450', plate: 'XYZ-9876', status: 'active' },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Truck, Users, CheckCircle2, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Truck, Users, CheckCircle2, Settings, LogOut, FileText } from 'lucide-react';
 import { ASSETS } from '../types';
 
 interface SidebarProps {
@@ -43,10 +43,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
         />
         <NavItem 
           icon={<CheckCircle2 size={20} />} 
-          label="Verificações" 
+          label="Verificações - Odômetro" 
           viewName="validation"
           isActive={currentView === 'validation'}
           onClick={() => onNavigate('validation')}
+        />
+        <NavItem 
+          icon={<FileText size={20} />} 
+          label="Verificações - Notas Fiscais" 
+          viewName="fiscal-notes"
+          isActive={currentView === 'fiscal-notes'}
+          onClick={() => onNavigate('fiscal-notes')}
         />
         <NavItem 
           icon={<Settings size={20} />} 

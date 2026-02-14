@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { ValidationCard } from './components/ValidationCard';
 import { FleetManager } from './components/FleetManager';
+import { FiscalNoteValidator } from './components/FiscalNoteValidator';
 import { CheckCircle2 } from 'lucide-react';
 import { MOCK_VEHICLES, Vehicle } from './types';
 
@@ -105,6 +106,9 @@ export default function App() {
             </div>
           </div>
         );
+
+      case 'fiscal-notes':
+        return <FiscalNoteValidator />;
 
       default:
         return (
