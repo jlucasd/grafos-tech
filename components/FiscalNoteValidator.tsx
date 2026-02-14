@@ -22,6 +22,7 @@ export const FiscalNoteValidator: React.FC = () => {
   const [nfInput, setNfInput] = useState('');
   const [results, setResults] = useState<FiscalNoteResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to read file as Base64
@@ -34,18 +35,14 @@ export const FiscalNoteValidator: React.FC = () => {
     });
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = event.target.files;
-    if (!fileList || fileList.length === 0) return;
+  const processFiles = async (files: File[]) => {
+    if (files.length === 0) return;
 
     if (!nfInput) {
       alert("Por favor, insira o número da Nota Fiscal antes de enviar imagens.");
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
-
-    // Convert FileList to Array immediately to avoid access issues
-    const files: File[] = Array.from(fileList);
 
     // Create initial state entries
     const newResults: FiscalNoteResult[] = files.map(file => ({
@@ -81,6 +78,31 @@ export const FiscalNoteValidator: React.FC = () => {
     setIsProcessing(false);
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = event.target.files;
+    if (!fileList) return;
+    await processFiles(Array.from(fileList));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await processFiles(Array.from(e.dataTransfer.files));
+    }
+  };
+
   const updateResult = (id: string, updates: Partial<FiscalNoteResult>) => {
     setResults(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
   };
@@ -110,7 +132,8 @@ export const FiscalNoteValidator: React.FC = () => {
               Regras:
               1. Classifique a imagem como "CANHOTO" (papel de comprovante, nota fiscal, recibo), "MERCADORIA" (caixas, produtos, caminhão) ou "OUTRO".
               2. Se for "CANHOTO", procure pelo número da NF "${expectedNf}" na imagem. Pode estar manuscrito ou impresso.
-              3. Se for "CANHOTO", verifique se há uma assinatura (rabisco, nome escrito) no campo de recebedor.
+              3. Se for "CANHOTO", verifique RIGOROSAMENTE se há uma assinatura MANUSCRITA (tinta de caneta, rabisco) no campo de recebedor.
+                 IMPORTANTE: Se o campo estiver em branco, vazio ou contiver apenas linhas/textos impressos do próprio formulário, retorne isSigned: FALSE. Só retorne TRUE se houver claramente uma escrita manual.
 
               Retorne o resultado em JSON seguindo exatamente o schema.`
             }
@@ -137,7 +160,7 @@ export const FiscalNoteValidator: React.FC = () => {
               },
               isSigned: { 
                 type: Type.BOOLEAN, 
-                description: "Verdadeiro se houver uma assinatura visual visível" 
+                description: "Verdadeiro APENAS se houver uma assinatura manuscrita visível. Falso se estiver em branco." 
               },
               confidence: { 
                 type: Type.NUMBER, 
@@ -283,12 +306,19 @@ export const FiscalNoteValidator: React.FC = () => {
                 accept="image/*"
               />
               <div 
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 onClick={() => !isProcessing && fileInputRef.current?.click()}
-                className={`border-2 border-dashed border-slate-300 rounded-xl p-8 flex flex-col items-center justify-center text-center transition-colors h-40 group ${
-                  !isProcessing ? 'cursor-pointer hover:border-primary hover:bg-primary/5' : 'cursor-default opacity-50'
+                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-all h-40 group ${
+                  isDragging 
+                    ? 'border-primary bg-primary/10 scale-[1.02]' 
+                    : !isProcessing 
+                      ? 'border-slate-300 hover:border-primary hover:bg-primary/5 cursor-pointer' 
+                      : 'border-slate-200 cursor-default opacity-50'
                 }`}
               >
-                <div className="bg-primary/10 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                <div className={`p-3 rounded-full mb-3 transition-transform ${isDragging ? 'bg-primary/20 scale-110' : 'bg-primary/10 group-hover:scale-110'}`}>
                   <CloudUpload className="text-primary h-6 w-6" />
                 </div>
                 <p className="text-sm text-slate-900 font-medium">Clique para enviar ou arraste e solte</p>

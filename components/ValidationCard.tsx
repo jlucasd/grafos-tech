@@ -10,16 +10,18 @@ import {
   Flag, 
   Check,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  Save
 } from 'lucide-react';
-import { ASSETS, Vehicle } from '../types';
+import { ASSETS, Vehicle, VerificationData } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 
 interface ValidationCardProps {
   vehicles: Vehicle[];
+  onValidationComplete: (data: VerificationData) => void;
 }
 
-export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
+export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles, onValidationComplete }) => {
   // Application State
   const [imageSrc, setImageSrc] = useState<string>(ASSETS.dashboard);
   const [manualMileage, setManualMileage] = useState<string>('12500');
@@ -29,6 +31,7 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
   const [status, setStatus] = useState<'idle' | 'success' | 'divergence' | 'error'>('divergence');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicles.length > 0 ? vehicles[0].id : '');
+  const [isSaved, setIsSaved] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,12 +48,15 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
 
   // Effect to update status based on values
   useEffect(() => {
-    if (aiMileage !== null && hasDivergence) {
-      setStatus('divergence');
-    } else if (aiMileage !== null && !hasDivergence) {
-      setStatus('success');
+    // Only update status if we haven't saved yet (lock state after save)
+    if (!isSaved) {
+      if (aiMileage !== null && hasDivergence) {
+        setStatus('divergence');
+      } else if (aiMileage !== null && !hasDivergence) {
+        setStatus('success');
+      }
     }
-  }, [manualMileage, aiMileage, hasDivergence]);
+  }, [manualMileage, aiMileage, hasDivergence, isSaved]);
 
   // Helper: Convert File to Base64
   const fileToBase64 = (file: File): Promise<string> => {
@@ -70,6 +76,7 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
     try {
       setIsAnalyzing(true);
       setErrorMessage('');
+      setIsSaved(false); // Reset saved state for new image
       const base64Data = await fileToBase64(file);
       setImageSrc(base64Data);
       
@@ -122,8 +129,7 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
         const result = JSON.parse(jsonText);
         setAiMileage(result.mileage);
         setConfidence(result.confidence);
-        // Auto-fill manual mileage for UX convenience, or leave it for user to verify?
-        // Let's leave manual mileage as is so user has to check it, unless it was 0
+        // Auto-fill manual mileage for UX convenience if it was empty/zero
         if (numericManual === 0) {
             setManualMileage(String(result.mileage));
         }
@@ -143,10 +149,33 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
     fileInputRef.current?.click();
   };
 
+  const completeValidation = (finalMileage: number) => {
+    const data: VerificationData = {
+      id: Math.random().toString(36).substr(2, 9),
+      imageUrl: imageSrc,
+      imageDate: new Date().toISOString(),
+      imageSize: 'N/A',
+      vehicleId: selectedVehicleId,
+      manualMileage: finalMileage,
+      aiMileage: aiMileage || 0,
+      confidence: confidence,
+      status: 'success'
+    };
+    
+    onValidationComplete(data);
+    setIsSaved(true);
+    setStatus('success');
+  };
+
   const handleAcceptAiValue = () => {
     if (aiMileage !== null) {
       setManualMileage(String(aiMileage));
+      completeValidation(aiMileage);
     }
+  };
+
+  const handleManualConfirm = () => {
+    completeValidation(numericManual);
   };
 
   return (
@@ -182,7 +211,7 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
             )}
             
             {/* Hover Actions Overlay */}
-            <div className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px] ${isAnalyzing ? 'hidden' : 'opacity-0 group-hover:opacity-100'}`}>
+            <div className={`absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px] ${isAnalyzing || isSaved ? 'hidden' : 'opacity-0 group-hover:opacity-100'}`}>
               <button 
                 onClick={() => window.open(imageSrc, '_blank')}
                 className="bg-white/90 hover:bg-white text-slate-800 px-4 py-2 rounded-lg text-sm font-medium shadow-lg flex items-center gap-2 transition-transform hover:scale-105"
@@ -217,9 +246,11 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
              ) : (
                <span>Imagem processada</span>
              )}
-            <button onClick={triggerFileUpload} className="text-primary hover:underline">
-              Alterar imagem
-            </button>
+            {!isSaved && (
+              <button onClick={triggerFileUpload} className="text-primary hover:underline">
+                Alterar imagem
+              </button>
+            )}
           </div>
         </div>
 
@@ -239,7 +270,8 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
                 <select
                   id="vehicle"
                   name="vehicle"
-                  className="block w-full rounded-lg border-slate-300 bg-white text-slate-900 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 pl-3 pr-10 border"
+                  disabled={isSaved}
+                  className="block w-full rounded-lg border-slate-300 bg-white text-slate-900 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2.5 pl-3 pr-10 border disabled:bg-slate-100 disabled:text-slate-500"
                   value={selectedVehicleId}
                   onChange={(e) => setSelectedVehicleId(e.target.value)}
                 >
@@ -266,10 +298,11 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
                   pattern="[0-9]*"
                   name="mileage"
                   id="mileage"
-                  className={`block w-full rounded-lg border sm:text-sm py-2.5 pr-12 focus:outline-none focus:ring-1 transition-all ${
-                    status === 'divergence'
+                  disabled={isSaved}
+                  className={`block w-full rounded-lg border sm:text-sm py-2.5 pr-12 focus:outline-none focus:ring-1 transition-all disabled:bg-slate-100 ${
+                    status === 'divergence' && !isSaved
                       ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500' 
-                      : status === 'success'
+                      : status === 'success' || isSaved
                         ? 'border-green-300 text-green-900 focus:border-green-500 focus:ring-green-500'
                         : 'border-slate-300 focus:border-primary focus:ring-primary'
                   }`}
@@ -277,33 +310,42 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
                   onChange={(e) => setManualMileage(e.target.value)}
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <span className={`${status === 'divergence' ? 'text-red-500' : 'text-slate-500'} sm:text-sm font-medium`}>km</span>
+                  <span className={`${status === 'divergence' && !isSaved ? 'text-red-500' : 'text-slate-500'} sm:text-sm font-medium`}>km</span>
                 </div>
-                {status === 'divergence' && (
+                {!isSaved && status === 'divergence' && (
                   <div className="absolute inset-y-0 right-10 flex items-center pointer-events-none">
                     <AlertCircle className="h-5 w-5 text-red-500" aria-hidden="true" />
                   </div>
                 )}
-                {status === 'success' && (
+                {(status === 'success' || isSaved) && (
                   <div className="absolute inset-y-0 right-10 flex items-center pointer-events-none">
                     <Check className="h-5 w-5 text-green-500" aria-hidden="true" />
                   </div>
                 )}
               </div>
-              {status === 'divergence' && (
+              {!isSaved && status === 'divergence' && (
                 <p className="mt-2 text-sm text-red-600 animate-in slide-in-from-top-1">
                   Valor diverge da leitura automática.
                 </p>
               )}
-               {status === 'success' && (
+               {(status === 'success' || isSaved) && (
                 <p className="mt-2 text-sm text-green-600 animate-in slide-in-from-top-1">
-                  Leitura validada com sucesso.
+                  Leitura validada.
                 </p>
               )}
             </div>
 
             <div className="pt-4 border-t border-slate-100 mt-auto">
-              {isAnalyzing ? (
+              {isSaved ? (
+                 <button
+                 type="button"
+                 onClick={() => { setIsSaved(false); setManualMileage(''); setAiMileage(null); setImageSrc(ASSETS.dashboard); }}
+                 className="w-full flex justify-center py-2.5 px-4 border border-slate-300 rounded-lg shadow-sm text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 transition-colors"
+               >
+                 <RefreshCw className="w-5 h-5 mr-2 text-slate-500" />
+                 Iniciar Nova Verificação
+               </button>
+              ) : isAnalyzing ? (
                  <button
                  type="button"
                  disabled
@@ -328,7 +370,7 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
       </div>
 
       {/* Validation Result Section */}
-      {status === 'divergence' && aiMileage !== null && (
+      {!isSaved && status === 'divergence' && aiMileage !== null && (
         <div className="border-t border-slate-200 bg-slate-50 p-6 lg:p-8 animate-in slide-in-from-bottom-2 fade-in duration-300">
           <div className="rounded-lg border border-red-200 bg-red-50 p-4">
             <div className="flex">
@@ -386,17 +428,33 @@ export const ValidationCard: React.FC<ValidationCardProps> = ({ vehicles }) => {
         </div>
       )}
       
-      {/* Success State */}
+      {/* Success/Saved State */}
       {status === 'success' && (
          <div className="border-t border-slate-200 bg-green-50 p-6 lg:p-8 animate-in slide-in-from-bottom-2 fade-in duration-300">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                <Check className="h-6 w-6 text-green-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <Check className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-green-900">
+                    {isSaved ? "Validação Salva" : "Validação Pronta"}
+                  </h3>
+                  <p className="text-green-700">
+                    {isSaved ? "O registro foi adicionado ao histórico com sucesso." : "Os valores conferem. Deseja registrar essa leitura?"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-green-900">Validação Concluída</h3>
-                <p className="text-green-700">A leitura do odômetro foi confirmada e registrada com sucesso.</p>
-              </div>
+              
+              {!isSaved && (
+                <button
+                  onClick={handleManualConfirm}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                >
+                  <Save size={16} className="mr-2" />
+                  Registrar Leitura
+                </button>
+              )}
             </div>
          </div>
       )}

@@ -4,12 +4,13 @@ import { Header } from './components/Header';
 import { ValidationCard } from './components/ValidationCard';
 import { FleetManager } from './components/FleetManager';
 import { FiscalNoteValidator } from './components/FiscalNoteValidator';
-import { CheckCircle2 } from 'lucide-react';
-import { MOCK_VEHICLES, Vehicle } from './types';
+import { CheckCircle2, FileText } from 'lucide-react';
+import { MOCK_VEHICLES, Vehicle, VerificationData } from './types';
 
 export default function App() {
   const [currentView, setCurrentView] = useState('validation');
   const [vehicles, setVehicles] = useState<Vehicle[]>(MOCK_VEHICLES);
+  const [validationHistory, setValidationHistory] = useState<VerificationData[]>([]);
 
   // --- CRUD Handlers for Vehicles ---
   const handleAddVehicle = (newVehicleData: Omit<Vehicle, 'id'>) => {
@@ -26,6 +27,11 @@ export default function App() {
 
   const handleDeleteVehicle = (id: string) => {
     setVehicles(vehicles.filter(v => v.id !== id));
+  };
+
+  // --- Validation Handler ---
+  const handleValidationComplete = (data: VerificationData) => {
+    setValidationHistory(prev => [data, ...prev]);
   };
 
   // --- View Rendering Logic ---
@@ -70,38 +76,54 @@ export default function App() {
               </div>
             </div>
 
-            <ValidationCard vehicles={vehicles} />
+            <ValidationCard 
+              vehicles={vehicles} 
+              onValidationComplete={handleValidationComplete}
+            />
 
             {/* Recent History */}
             <div className="mt-8">
               <h2 className="text-lg font-medium text-slate-900 mb-4">Histórico Recente</h2>
               <div className="bg-white shadow-sm rounded-lg border border-slate-200 overflow-hidden">
-                <ul role="list" className="divide-y divide-slate-200">
-                  {[1, 2, 3].map((item) => (
-                    <li key={item} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
-                            <CheckCircle2 size={20} />
+                {validationHistory.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500">
+                    <FileText className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                    <p>Nenhuma verificação realizada nesta sessão.</p>
+                  </div>
+                ) : (
+                  <ul role="list" className="divide-y divide-slate-200">
+                    {validationHistory.map((item) => {
+                      const vehicle = vehicles.find(v => v.id === item.vehicleId);
+                      return (
+                        <li key={item.id} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex-shrink-0">
+                              <div className="h-10 w-10 rounded-lg bg-green-100 flex items-center justify-center text-green-600">
+                                <CheckCircle2 size={20} />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-slate-900 truncate">
+                                {vehicle ? `${vehicle.name} - ${vehicle.plate}` : 'Veículo Desconhecido'}
+                              </p>
+                              <p className="text-sm text-slate-500 truncate">
+                                Leitura: {item.manualMileage.toLocaleString('pt-BR')} km • Validado em: {new Date(item.imageDate).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Sucesso
+                              </span>
+                              <span className="text-xs text-slate-400">
+                                IA: {(item.confidence * 100).toFixed(0)}%
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-900 truncate">
-                            {vehicles.length > 0 ? `${vehicles[0].name} - ${vehicles[0].plate}` : 'Veículo Exemplo'}
-                          </p>
-                          <p className="text-sm text-slate-500 truncate">
-                            Validado em: 24/10/2023 - 14:30
-                          </p>
-                        </div>
-                        <div>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Sucesso
-                          </span>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             </div>
           </div>
