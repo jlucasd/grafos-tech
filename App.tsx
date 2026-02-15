@@ -33,6 +33,22 @@ export default function App() {
     setCurrentView('validation');
   };
 
+  const handleResetPassword = (email: string, newPassword: string): boolean => {
+    const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+    
+    if (userIndex !== -1) {
+      const updatedUsers = [...users];
+      updatedUsers[userIndex] = {
+        ...updatedUsers[userIndex],
+        password: newPassword
+      };
+      setUsers(updatedUsers);
+      return true; // Password updated successfully
+    }
+    
+    return false; // User not found
+  };
+
   // --- CRUD Handlers for Vehicles ---
   const handleAddVehicle = (newVehicleData: Omit<Vehicle, 'id'>) => {
     const newVehicle: Vehicle = {
@@ -211,7 +227,13 @@ export default function App() {
   // FORCE LOGIN: If no user is authenticated, render ONLY the Login screen.
   // This ensures the Login screen is the first thing seen when accessing the app.
   if (!currentUser) {
-    return <Login users={users} onLogin={handleLogin} />;
+    return (
+      <Login 
+        users={users} 
+        onLogin={handleLogin} 
+        onResetPassword={handleResetPassword}
+      />
+    );
   }
 
   // If logged in, show Main App structure
