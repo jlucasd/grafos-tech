@@ -1,16 +1,37 @@
 import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
+import { Login } from './components/Login';
 import { ValidationCard } from './components/ValidationCard';
 import { FleetManager } from './components/FleetManager';
+import { UserManager } from './components/UserManager';
 import { FiscalNoteValidator } from './components/FiscalNoteValidator';
 import { CheckCircle2, FileText } from 'lucide-react';
-import { MOCK_VEHICLES, Vehicle, VerificationData } from './types';
+import { MOCK_VEHICLES, MOCK_USERS, Vehicle, User, VerificationData } from './types';
 
 export default function App() {
+  // Authentication State - Start as null to force Login Screen on first access
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  // App Data State
   const [currentView, setCurrentView] = useState('validation');
   const [vehicles, setVehicles] = useState<Vehicle[]>(MOCK_VEHICLES);
+  const [users, setUsers] = useState<User[]>(MOCK_USERS);
   const [validationHistory, setValidationHistory] = useState<VerificationData[]>([]);
+
+  // --- Auth Handlers ---
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    // Reset view to default upon login
+    setCurrentView('validation');
+  };
+
+  const handleLogout = () => {
+    // Clear user and sensitive session data
+    setCurrentUser(null);
+    setValidationHistory([]);
+    setCurrentView('validation');
+  };
 
   // --- CRUD Handlers for Vehicles ---
   const handleAddVehicle = (newVehicleData: Omit<Vehicle, 'id'>) => {
@@ -27,6 +48,23 @@ export default function App() {
 
   const handleDeleteVehicle = (id: string) => {
     setVehicles(vehicles.filter(v => v.id !== id));
+  };
+
+  // --- CRUD Handlers for Users ---
+  const handleAddUser = (newUserData: Omit<User, 'id'>) => {
+    const newUser: User = {
+      ...newUserData,
+      id: Math.random().toString(36).substr(2, 9)
+    };
+    setUsers([...users, newUser]);
+  };
+
+  const handleUpdateUser = (updatedUser: User) => {
+    setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+  };
+
+  const handleDeleteUser = (id: string) => {
+    setUsers(users.filter(u => u.id !== id));
   };
 
   // --- Validation Handler ---
@@ -53,6 +91,26 @@ export default function App() {
               onAddVehicle={handleAddVehicle}
               onUpdateVehicle={handleUpdateVehicle}
               onDeleteVehicle={handleDeleteVehicle}
+            />
+          </div>
+        );
+      
+      case 'users':
+        return (
+          <div className="max-w-6xl mx-auto space-y-6">
+            <div className="flex items-end justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900">Usuários do Sistema</h1>
+                <p className="mt-1 text-sm text-slate-500">
+                  Gerencie o acesso e permissões dos usuários administrativos.
+                </p>
+              </div>
+            </div>
+            <UserManager 
+              users={users}
+              onAddUser={handleAddUser}
+              onUpdateUser={handleUpdateUser}
+              onDeleteUser={handleDeleteUser}
             />
           </div>
         );
@@ -150,9 +208,21 @@ export default function App() {
     }
   };
 
+  // FORCE LOGIN: If no user is authenticated, render ONLY the Login screen.
+  // This ensures the Login screen is the first thing seen when accessing the app.
+  if (!currentUser) {
+    return <Login users={users} onLogin={handleLogin} />;
+  }
+
+  // If logged in, show Main App structure
   return (
     <div className="flex h-screen bg-background-light">
-      <Sidebar currentView={currentView} onNavigate={setCurrentView} />
+      <Sidebar 
+        currentView={currentView} 
+        currentUser={currentUser}
+        onNavigate={setCurrentView} 
+        onLogout={handleLogout}
+      />
       
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />

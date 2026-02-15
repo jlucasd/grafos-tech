@@ -1,7 +1,17 @@
+
 export interface Vehicle {
   id: string;
   name: string;
   plate: string;
+  status: 'active' | 'inactive';
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password?: string; // Optional because we might not want to display it in tables, but needed for login
+  role: 'admin' | 'user';
   status: 'active' | 'inactive';
 }
 
@@ -36,6 +46,11 @@ export const MOCK_VEHICLES: Vehicle[] = [
   { id: '1', name: 'VOLVO FH 540', plate: 'ABC-1234', status: 'active' },
   { id: '2', name: 'SCANIA R 450', plate: 'XYZ-9876', status: 'active' },
   { id: '3', name: 'MERCEDES ACTROS', plate: 'DEF-5678', status: 'inactive' },
+];
+
+export const MOCK_USERS: User[] = [
+  { id: '1', name: 'Felipe Sandrini', email: 'felipe@grafostech.com.br', password: '123', role: 'admin', status: 'active' },
+  { id: '2', name: 'João Luccas Damiani', email: 'joao@grafostech.com.br', password: '123', role: 'admin', status: 'active' },
 ];
 
 // URLs provided by the user in the prompt

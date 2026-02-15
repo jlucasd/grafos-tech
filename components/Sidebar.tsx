@@ -1,13 +1,15 @@
 import React from 'react';
-import { LayoutDashboard, Truck, Users, CheckCircle2, Settings, LogOut, FileText } from 'lucide-react';
-import { ASSETS } from '../types';
+import { LayoutDashboard, Truck, Users, CheckCircle2, Settings, LogOut, FileText, UserCog } from 'lucide-react';
+import { ASSETS, User } from '../types';
 
 interface SidebarProps {
   currentView: string;
+  currentUser: User | null;
   onNavigate: (view: string) => void;
+  onLogout: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ currentView, currentUser, onNavigate, onLogout }) => {
   return (
     <aside className="w-64 bg-white border-r border-slate-200 flex-shrink-0 hidden md:flex flex-col h-full">
       <div className="h-16 flex items-center px-6 border-b border-slate-200">
@@ -55,6 +57,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
           isActive={currentView === 'fiscal-notes'}
           onClick={() => onNavigate('fiscal-notes')}
         />
+        <div className="pt-4 pb-2">
+          <p className="px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Administração
+          </p>
+        </div>
+        <NavItem 
+          icon={<UserCog size={20} />} 
+          label="Usuários" 
+          viewName="users"
+          isActive={currentView === 'users'}
+          onClick={() => onNavigate('users')}
+        />
         <NavItem 
           icon={<Settings size={20} />} 
           label="Configurações" 
@@ -72,10 +86,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
             src={ASSETS.avatar}
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-900 truncate">Carlos Silva</p>
-            <p className="text-xs text-slate-500 truncate">Gerente de Frota</p>
+            <p className="text-sm font-medium text-slate-900 truncate">
+              {currentUser ? currentUser.name : 'Usuário'}
+            </p>
+            <p className="text-xs text-slate-500 truncate capitalize">
+              {currentUser ? currentUser.role : 'Visitante'}
+            </p>
           </div>
-          <button className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button 
+            onClick={onLogout}
+            className="text-slate-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+            title="Sair do sistema"
+          >
             <LogOut size={18} />
           </button>
         </div>
