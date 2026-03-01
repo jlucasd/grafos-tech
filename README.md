@@ -1,20 +1,52 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Grafos Tech Odometer Verification
 
-# Run and deploy your AI Studio app
+A fleet management interface for validating vehicle odometer readings and fiscal notes using AI image analysis.
 
-This contains everything you need to run your app locally.
+## Endpoint: Validação de Canhotos de Notas Fiscais
 
-View your app in AI Studio: https://ai.studio/apps/drive/1zy66KVdP0TZ_QuOHIwyIfYvPrO20bUef
+**URL:** `POST /api/validate-fiscal-note`
 
-## Run Locally
+Este endpoint recebe uma requisição do tipo `multipart/form-data` contendo a imagem do canhoto e o número da nota fiscal esperado. Ele utiliza a API do Gemini para processar a imagem com as mesmas regras da interface visual.
 
-**Prerequisites:**  Node.js
+### Parâmetros (Form Data)
+- `image` (File): O arquivo de imagem do canhoto (PNG, JPG, PDF, etc).
+- `nfNumber` (Text): O número da nota fiscal que você espera encontrar na imagem.
 
+### Exemplo de Resposta de Sucesso (JSON)
+```json
+{
+  "status": "validated",
+  "aiData": {
+    "classification": "CANHOTO",
+    "nfNumberFound": "450912001",
+    "isNfMatch": true,
+    "isSigned": true,
+    "confidence": 0.98
+  }
+}
+```
+*O `status` pode ser: `validated` (sucesso total), `review` (necessita revisão manual) ou `rejected` (rejeitado).*
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+
+## Como Testar o Endpoint
+
+Você pode testar esse endpoint utilizando ferramentas como **Postman**, **Insomnia** ou via **cURL** no seu terminal.
+
+### Opção 1: Usando cURL no terminal
+Substitua `caminho/para/sua/imagem.jpg` pelo caminho real de uma imagem no seu computador e `123456` pelo número da nota fiscal:
+
+```bash
+curl -X POST https://ais-dev-q4hf6i2k4wk5lnlmuqfvwh-222058879677.us-east1.run.app/api/validate-fiscal-note \
+  -F "image=@caminho/para/sua/imagem.jpg" \
+  -F "nfNumber=123456"
+```
+
+### Opção 2: Usando Postman / Insomnia
+1. Crie uma nova requisição do tipo **POST**.
+2. Insira a URL: `https://ais-dev-q4hf6i2k4wk5lnlmuqfvwh-222058879677.us-east1.run.app/api/validate-fiscal-note`
+3. Vá na aba **Body** e selecione a opção **form-data**.
+4. Adicione os seguintes campos:
+   - **Key:** `image` | **Type:** File | **Value:** (Selecione um arquivo de imagem do seu computador)
+   - **Key:** `nfNumber` | **Type:** Text | **Value:** `123456` (ou o número da NF que deseja validar)
+5. Clique em **Send** e veja a resposta em JSON com a análise da IA.
